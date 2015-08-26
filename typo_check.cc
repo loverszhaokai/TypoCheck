@@ -14,18 +14,21 @@ struct TypoInfo {
 	TypoInfo()
 	{
 		ch = ' ';
+		ww = "";
 		rw = "";
 		children = list<TypoInfo>();
 	}
 
-	TypoInfo(char _ch, const string &_rw)
+	TypoInfo(char _ch, const string &_ww, const string &_rw)
 	{
 		ch = _ch;
+		ww = _rw;
 		rw = _rw;
 		children = list<TypoInfo>();
 	}
 
 	char ch;
+	string ww; // wrong word
 	string rw; // right word
 
 	list<TypoInfo> children;
@@ -72,13 +75,13 @@ int insert_typo(const string &ww, const string &rw)
 			}
 		}
 		if (!found)
-			it = tip->children.insert(it, TypoInfo(ww[index], ""));
+			it = tip->children.insert(it, TypoInfo(ww[index], "", ""));
 		tip = &(*it);
 
 		index++;
 	}
+	tip->ww = ww;
 	tip->rw = rw;
-
 
 	return 0;
 }
@@ -88,6 +91,46 @@ void init_typos()
 	insert_typo("abcced", "abced");
 	insert_typo("kaii", "kai");
 	insert_typo("alaxander", "alexander");
+}
+
+int search_typo(const string &line)
+{
+	int index = 0;
+	bool found;
+	TypoInfo* tip;
+	vector<TypoInfo*> all_tip;
+	vector<TypoInfo*>::iterator ait;
+	list<TypoInfo>::iterator it;
+
+	while (index < line.size()) {
+		ait = all_tip.begin();
+		while (ait != all_tip.end()) {
+			tip = *ait;
+			found = false;
+
+			for (it = tip->children.begin(); it != tip->children.end(); it++) {
+				if (it->ch == line[index]) {
+					found = true;
+
+					if (it->rw != "") {
+						cout << "find typo:'" << it->ww << "' maybe it should be '" << it->rw << "'" << endl;
+					}
+
+					break;
+				}
+			}
+
+			if (found) {
+				*ait = &(*it);
+				ait++;
+			} else {
+				all_tip.erase(ait);
+			}
+		}
+		all_tip.push_back(&typo_info[cidx[line[index]]]);
+
+		index++;
+	}
 }
 
 vector<TypoInfo*> words;
@@ -128,6 +171,8 @@ int main()
 	init_typos();
 
 	print_typo_info();
+
+	search_typo("kaiiiiiiiialexanderalaxanalaxanderoop");
 
 	return 0;
 }
