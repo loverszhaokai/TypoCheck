@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <list>
 #include <string>
@@ -5,6 +6,7 @@
 
 using std::cout;
 using std::endl;
+using std::fstream;
 using std::list;
 using std::string;
 using std::vector;
@@ -34,11 +36,19 @@ struct TypoInfo {
 	list<TypoInfo> children;
 };
 
-char cidx[256]; // char to index, a~z and A-Z to 0~25, others to 255
+static char cidx[256]; // char to index, a~z and A-Z to 0~25, others to 255
 
-TypoInfo typo_info[26];
+static TypoInfo typo_info[26];
 
-void init()
+static void usage()
+{
+	cout << endl;
+	cout << "usage:" << endl;
+	cout << "\ttypochecker typos checkfile1" << endl;
+	cout << endl;
+}
+
+static void init()
 {
 	for (int i = 0; i < sizeof(cidx) / sizeof(char); i++) {
 		if (i >= 'a' && i <= 'z')
@@ -46,7 +56,7 @@ void init()
 		else if (i >= 'A' && i <= 'Z')
 			cidx[i] = i - 'A';
 		else
-			cidx[i] = 255;
+			cidx[i] = -1;
 	}
 
 	for (int i = 0; i < sizeof(typo_info) / sizeof(TypoInfo); i++) {
@@ -54,7 +64,7 @@ void init()
 	}
 }
 
-int insert_typo(const string &ww, const string &rw)
+static int insert_typo(const string &ww, const string &rw)
 {
 	int index = 0;
 	TypoInfo *tip;
@@ -86,14 +96,31 @@ int insert_typo(const string &ww, const string &rw)
 	return 0;
 }
 
-void init_typos()
+static void init_typos(const string &typos_file)
 {
-	insert_typo("abcced", "abced");
-	insert_typo("kaii", "kai");
-	insert_typo("alaxander", "alexander");
+	fstream fs;
+
+	fs.open(typos_file.c_str(), fstream::in);
+
+	if (!fs.is_open()) {
+		cout << "failed to read typos file[" << typos_file << "]" << endl;
+		return;
+	}
+
+	string line;
+	size_t index;
+
+	while (getline(fs, line)) {
+		if (line.size() != 0 && line[0] == '#')
+			continue;
+		index = line.find("||");
+		insert_typo(line.substr(0, index), line.substr(index + 2));
+	}
+
+	fs.close();
 }
 
-int search_typo(const string &line)
+static int search_typo_per_line(const string &line)
 {
 	int index = 0;
 	bool found;
@@ -103,6 +130,14 @@ int search_typo(const string &line)
 	list<TypoInfo>::iterator it;
 
 	while (index < line.size()) {
+
+		if (cidx[line[index]] == -1) {
+			// current char is not a~z or A~Z
+			all_tip.clear();
+			index++;
+			continue;
+		}
+
 		ait = all_tip.begin();
 		while (ait != all_tip.end()) {
 			tip = *ait;
@@ -113,7 +148,8 @@ int search_typo(const string &line)
 					found = true;
 
 					if (it->rw != "") {
-						cout << "find typo:'" << it->ww << "' maybe it should be '" << it->rw << "'" << endl;
+						cout << "find typo:'" << it->ww << "' maybe it should be '"
+							<< it->rw << "'" << endl;
 					}
 
 					break;
@@ -133,9 +169,31 @@ int search_typo(const string &line)
 	}
 }
 
-vector<TypoInfo*> words;
+static int search_typo_per_file(const string &file)
+{
+	fstream fs;
 
-void print_typo(TypoInfo *tip)
+	fs.open(file.c_str(), fstream::in);
+
+	if (!fs.is_open()) {
+		cout << "failed to read typos file[" << file << "]" << endl;
+		return -1;
+	}
+
+	string line;
+	size_t index;
+
+	while (getline(fs, line)) {
+		search_typo_per_line(line);
+	}
+
+	fs.close();
+	return 0;
+}
+
+static vector<TypoInfo*> words;
+
+static void print_typo(TypoInfo *tip)
 {
 	words.push_back(tip);
 
@@ -154,7 +212,7 @@ void print_typo(TypoInfo *tip)
 	}
 }
 
-void print_typo_info()
+static void print_typo_info()
 {
 	for (int i = 0; i < sizeof(typo_info) / sizeof(TypoInfo); i++) {
 		print_typo(typo_info + i);
@@ -162,17 +220,22 @@ void print_typo_info()
 	}
 }
 
-int main()
+int main(int argc, char **argv)
 {
 	cout << "Checking typos, please wait a moment" << endl;
 
+	if (argc != 3) {
+		usage();
+		return -1;
+	}
+
 	init();
 
-	init_typos();
+	init_typos(string(argv[1]));
 
 	print_typo_info();
 
-	search_typo("kaiiiiiiiialexanderalaxanalaxanderoop");
+	search_typo_per_file(string(argv[2]));
 
 	return 0;
 }
