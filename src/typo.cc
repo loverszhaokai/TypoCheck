@@ -40,7 +40,7 @@ struct TypoInfo {
 
 static char cidx[256]; // char to index, a~z and A-Z to 0~25, others to 255
 
-static TypoInfo typo_info[26];
+static TypoInfo typo_info; // This the root
 
 void init()
 {
@@ -52,10 +52,6 @@ void init()
 		else
 			cidx[i] = -1;
 	}
-
-	for (int i = 0; i < sizeof(typo_info) / sizeof(TypoInfo); i++) {
-		typo_info[i].ch = 'a' + i;
-	}
 }
 
 static int insert_typo(const string &ww, const string &rw)
@@ -65,8 +61,7 @@ static int insert_typo(const string &ww, const string &rw)
 	bool found;
 	list<TypoInfo>::iterator it;
 
-	tip = &typo_info[cidx[ww[index]]];
-	index++;
+	tip = &typo_info;
 
 	while (index < ww.size()) {
 		found = false;
@@ -75,6 +70,7 @@ static int insert_typo(const string &ww, const string &rw)
 				found = true;
 				break;
 			} else if (it->ch > ww[index]) {
+				// The children is from A to Z and a to z
 				break;
 			}
 		}
@@ -118,7 +114,7 @@ static int search_typo_per_line(const string &line)
 {
 	int index = 0;
 	bool found;
-	TypoInfo* tip;
+	TypoInfo* tip = &typo_info;
 	vector<TypoInfo*> all_tip;
 	vector<TypoInfo*>::iterator ait;
 	list<TypoInfo>::iterator it;
@@ -126,41 +122,46 @@ static int search_typo_per_line(const string &line)
 	while (index < line.size()) {
 
 		if (cidx[line[index]] == -1) {
-			// current char is not a~z or A~Z
-			all_tip.clear();
+			// current char is not a~z or A~Z, so it is a delimiter
+
+			if (found && tip->rw != "") {
+				cout << "find typo:'" << tip->ww << "' maybe it should be '"
+					<< tip->rw << "'" << endl;
+			}
+
+			tip = &typo_info;
 			index++;
 			continue;
 		}
 
-		ait = all_tip.begin();
-		while (ait != all_tip.end()) {
-			tip = *ait;
-			found = false;
+		found = false;
+		for (it = tip->children.begin(); it != tip->children.end(); it++) {
+			if (it->ch == line[index]) {
+				found = true;
 
-			for (it = tip->children.begin(); it != tip->children.end(); it++) {
-				if (it->ch == line[index]) {
-					found = true;
 
-					if (it->rw != "") {
-						cout << "find typo:'" << it->ww << "' maybe it should be '"
-							<< it->rw << "'" << endl;
-					}
-
-					break;
-				}
-			}
-
-			if (found) {
-				*ait = &(*it);
-				ait++;
-			} else {
-				all_tip.erase(ait);
+				break;
+			} else if (it->ch > line[index]) {
+				// The children is from A to Z and a to z
+				break;
 			}
 		}
-		all_tip.push_back(&typo_info[cidx[line[index]]]);
+
+		if (found)
+			tip = &(*it);
+		else
+			tip = &typo_info;
 
 		index++;
 	}
+
+	// The last word is a typo
+	if (found && tip->rw != "") {
+		cout << "find typo:'" << tip->ww << "' maybe it should be '"
+			<< tip->rw << "'" << endl;
+	}
+
+	return 0;
 }
 
 int search_typo_per_file(const string &file)
@@ -208,9 +209,6 @@ static void print_typo(TypoInfo *tip)
 
 void print_typo_info()
 {
-	for (int i = 0; i < sizeof(typo_info) / sizeof(TypoInfo); i++) {
-		print_typo(typo_info + i);
-		words.clear();
-	}
+	print_typo(&typo_info);
 }
 
