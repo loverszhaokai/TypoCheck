@@ -1,3 +1,5 @@
+#include "typo.h"
+
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -40,15 +42,7 @@ static char cidx[256]; // char to index, a~z and A-Z to 0~25, others to 255
 
 static TypoInfo typo_info[26];
 
-static void usage()
-{
-	cout << endl;
-	cout << "usage:" << endl;
-	cout << "\ttypochecker typos checkfile1" << endl;
-	cout << endl;
-}
-
-static void init()
+void init()
 {
 	for (int i = 0; i < sizeof(cidx) / sizeof(char); i++) {
 		if (i >= 'a' && i <= 'z')
@@ -96,7 +90,7 @@ static int insert_typo(const string &ww, const string &rw)
 	return 0;
 }
 
-static void init_typos(const string &typos_file)
+void init_typos(const string &typos_file)
 {
 	fstream fs;
 
@@ -169,7 +163,7 @@ static int search_typo_per_line(const string &line)
 	}
 }
 
-static int search_typo_per_file(const string &file)
+int search_typo_per_file(const string &file)
 {
 	fstream fs;
 
@@ -212,7 +206,7 @@ static void print_typo(TypoInfo *tip)
 	}
 }
 
-static void print_typo_info()
+void print_typo_info()
 {
 	for (int i = 0; i < sizeof(typo_info) / sizeof(TypoInfo); i++) {
 		print_typo(typo_info + i);
@@ -220,22 +214,3 @@ static void print_typo_info()
 	}
 }
 
-int main(int argc, char **argv)
-{
-	cout << "Checking typos, please wait a moment" << endl;
-
-	if (argc != 3) {
-		usage();
-		return -1;
-	}
-
-	init();
-
-	init_typos(string(argv[1]));
-
-	print_typo_info();
-
-	search_typo_per_file(string(argv[2]));
-
-	return 0;
-}
