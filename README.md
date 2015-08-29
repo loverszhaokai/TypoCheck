@@ -3,6 +3,8 @@ This project is to check typos in programming.
 
 # 1. How to use it
 
-$ g++ typo_check.cc  -o typochecker
+$ cd TypoCheck
 
-$ ./typochecker spelling.txt test_input.txt
+$ make
+
+$ ./typochecker test/spelling.txt test/test_input.txt
